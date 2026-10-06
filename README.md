@@ -2,7 +2,8 @@
 
 A private daily scoreboard for **Vish** and **Papz**, who play **Wordle**, **Tradle** and **Krillion** every day and want to know who won each game and each day.
 
-- **Live site:** `https://<github-username>.github.io/papa-razzi/` (GitHub Pages)
+- **Live site:** https://svish077.github.io/PAPA-Razzi/ (GitHub Pages; the path is case-sensitive)
+- **Repo:** https://github.com/svish077/PAPA-Razzi
 - **Data:** Firebase Firestore, project `papa-razzi-7e5c7`
 - **Status:** working in production as of 2026-10-06
 
@@ -109,7 +110,7 @@ const GAMES=[
    ```
    To give Papz her own login later: add her user in Authentication, add her email to the list, and publish.
 5. Web app registered; config values copied into `index.html`.
-6. **Authentication → Settings → Authorized domains** includes `<github-username>.github.io`.
+6. **Authentication → Settings → Authorized domains** includes `svish077.github.io`.
 
 **Gotchas hit during setup:**
 - "Line 1: Parse error" when saving rules = rules pasted into **Realtime Database** instead of **Firestore**.
