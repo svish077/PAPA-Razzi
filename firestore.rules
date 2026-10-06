@@ -1,0 +1,13 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Only these two accounts can read or write. Use the exact emails you create in Firebase Authentication.
+    function isPlayer() {
+      return request.auth != null
+        && request.auth.token.email in ['vishva92@gmail.com'];
+    }
+    match /{document=**} {
+      allow read, write: if isPlayer();
+    }
+  }
+}
