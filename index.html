@@ -17,7 +17,7 @@
 :root{
   --bg:#f3f4f7; --surface:#ffffff; --line:#e1e3ea; --fg:#1b1d26; --muted:#6a6f80;
   --p1:#e0602f; --p1-soft:#fbe4da; --p2:#6d4fa8; --p2-soft:#ebe4f6;
-  --wordle:#5c9a4f; --tradle:#3a7bbf; --krillion:#13707a; --tie:#9aa0b0;
+  --wordle:#5c9a4f; --perceptle:#3a7bbf; --krillion:#13707a; --tie:#9aa0b0;
   --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
   --body:"Figtree", system-ui, -apple-system, sans-serif;
   --mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
@@ -25,11 +25,11 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#13151b; --surface:#1c1f28; --line:#2c303c; --fg:#eceef4; --muted:#9298a8;
   --p1:#e3683a; --p1-soft:#3a2219; --p2:#9479d6; --p2-soft:#2a2240;
-  --wordle:#79b86b; --tradle:#5d9ce0; --krillion:#3fb3bd; --tie:#6c7284; color-scheme:dark}}
+  --wordle:#79b86b; --perceptle:#5d9ce0; --krillion:#3fb3bd; --tie:#6c7284; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#13151b; --surface:#1c1f28; --line:#2c303c; --fg:#eceef4; --muted:#9298a8;
   --p1:#e3683a; --p1-soft:#3a2219; --p2:#9479d6; --p2-soft:#2a2240;
-  --wordle:#79b86b; --tradle:#5d9ce0; --krillion:#3fb3bd; --tie:#6c7284; color-scheme:dark}
+  --wordle:#79b86b; --perceptle:#5d9ce0; --krillion:#3fb3bd; --tie:#6c7284; color-scheme:dark}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
 .wrap{max-width:760px;margin:0 auto;padding:20px 16px 48px;display:grid;gap:22px}
 h1,h2{font-family:var(--display);margin:0;text-wrap:balance}
@@ -73,7 +73,7 @@ button{font:inherit;cursor:pointer}
 .field.win1{border-color:var(--p1);background:var(--p1-soft)} .field.win2{border-color:var(--p2);background:var(--p2-soft)}
 .mid{display:grid;justify-items:center;gap:3px;text-align:center}
 .gname{font-family:var(--display);font-weight:800;font-size:1rem}
-.gname.wordle{color:var(--wordle)} .gname.tradle{color:var(--tradle)} .gname.krillion{color:var(--krillion)}
+.gname.wordle{color:var(--wordle)} .gname.tradle{color:var(--muted)} .gname.perceptle{color:var(--perceptle)} .gname.krillion{color:var(--krillion)}
 .verdict{font-size:.75rem;color:var(--muted);font-weight:600;white-space:nowrap}
 .verdict.p1{color:var(--p1)} .verdict.p2{color:var(--p2)}
 .rule{font-size:.7rem;color:var(--muted)}
@@ -135,7 +135,7 @@ textarea{font:inherit;font-family:var(--mono);font-size:.85rem;min-height:90px;b
 <body>
 <div class="wrap">
   <div class="top">
-    <div><h1>Papa-Razzi Affair</h1><div class="eyebrow" style="margin-top:2px">Daily sessions: Wordle · Tradle · Krillion</div></div>
+    <div><h1>Papa-Razzi Affair</h1><div class="eyebrow" style="margin-top:2px">Daily sessions: Wordle · Perceptle · Krillion</div></div>
     <div><button class="linkbtn" id="editNamesBtn" type="button" hidden>Edit names</button><button class="linkbtn" id="signOutBtn" type="button" hidden>Sign out</button></div>
   </div>
 
@@ -183,7 +183,7 @@ textarea{font:inherit;font-family:var(--mono);font-size:.85rem;min-height:90px;b
     <details class="paste">
       <summary>Paste a share result instead</summary>
       <div class="pastebox">
-        <textarea id="pasteText" placeholder="Paste what Wordle, Tradle or Krillion copies when you tap Share. Several at once is fine."></textarea>
+        <textarea id="pasteText" placeholder="Paste what Wordle or Krillion copies when you tap Share (Tradle too, for days before 26 Oct). Several at once is fine."></textarea>
         <div class="btnrow"><button class="btn p1" id="paste1" type="button">Add to …</button><button class="btn p2" id="paste2" type="button">Add to …</button></div>
         <div class="msg" id="pasteMsg"></div>
       </div>
@@ -223,9 +223,13 @@ import { initializeFirestore, persistentLocalCache, doc as fdoc, collection as f
 (function(){
 const GAMES=[
   {k:'wordle',name:'Wordle',type:'guess',rule:'fewest guesses'},
-  {k:'tradle',name:'Tradle',type:'guess',rule:'fewest guesses'},
-  {k:'krillion',name:'Krillion',type:'points',rule:'most points'}
+  // Tradle was swapped for Perceptle on 2026-10-26. Days before keep Tradle; days from then count Perceptle.
+  {k:'tradle',name:'Tradle',type:'guess',rule:'fewest guesses',until:'2026-10-25'},
+  {k:'perceptle',name:'Perceptle',type:'points',max:1000,rule:'most points (0–1000)',from:'2026-10-26'},
+  {k:'krillion',name:'Krillion',type:'points',max:700,rule:'most points'}
 ];
+function on(g,ds){return(!g.from||ds>=g.from)&&(!g.until||ds<=g.until)}
+function gamesOn(ds){return GAMES.filter(g=>on(g,ds))}
 const P=['p1','p2'];
 let db=null, players={p1:{name:''},p2:{name:''}}, scores={}, loaded=false;
 const $=id=>document.getElementById(id);
@@ -239,9 +243,9 @@ function nm(p){return players[p]&&players[p].name||(p==='p1'?'Player one':'Playe
 function val(g,v){if(v==null||v==='')return null;if(g.type==='guess')return v==='X'?7:Number(v);return Number(v)}
 function cmp(g,a,b){const va=val(g,a),vb=val(g,b);if(va==null||vb==null||isNaN(va)||isNaN(vb))return null;if(va===vb)return'tie';if(g.type==='guess')return va<vb?'p1':'p2';return va>vb?'p1':'p2'}
 function dayResult(ds){const s=scores[ds]||{};const res={p1:0,p2:0,tie:0,decided:0,games:{}};
-  for(const g of GAMES){const r=cmp(g,s.p1&&s.p1[g.k],s.p2&&s.p2[g.k]);res.games[g.k]=r;if(r){res.decided++;res[r]++}}
+  const gs=gamesOn(ds);for(const g of gs){const r=cmp(g,s.p1&&s.p1[g.k],s.p2&&s.p2[g.k]);res.games[g.k]=r;if(r){res.decided++;res[r]++}}
   res.winner=res.decided?(res.p1>res.p2?'p1':res.p2>res.p1?'p2':'tie'):null;
-  res.final=res.decided===GAMES.length||(res.decided>0&&ds<todayStr());return res}
+  res.final=res.decided===gs.length||(res.decided>0&&ds<todayStr());return res}
 function fmt(g,v){if(v==null||v==='')return'–';return g.type==='guess'?(v+'/6'):(v+' pts')}
 
 /* ---------- Scoreboard + history ---------- */
@@ -268,7 +272,7 @@ function renderAll(){
   if(!dates.length){$('hist').innerHTML='<div class="empty">'+(loaded?'Your past days will appear here once you log the first scores.':'Loading…')+'</div>'}
   else{$('hist').innerHTML='';for(const ds of dates){const r=dayResult(ds),s=scores[ds];
     const b=document.createElement('button');b.type='button';b.className='hrow';
-    const chips=GAMES.map(g=>{const w=r.games[g.k];const a=s.p1&&s.p1[g.k],c=s.p2&&s.p2[g.k];
+    const chips=gamesOn(ds).map(g=>{const w=r.games[g.k];const a=s.p1&&s.p1[g.k],c=s.p2&&s.p2[g.k];
       return `<span class="chip ${w&&w!=='tie'?w:''}">${g.name} ${a==null||a===''?'–':a}·${c==null||c===''?'–':c}</span>`}).join('');
     let wl,wc;if(!r.winner){wl='Waiting';wc='open'}else if(r.winner==='tie'){wl=r.final?'Tie':'Level';wc='tie'}else{wl=(r.final?'':'Leading: ')+esc(nm(r.winner));wc=r.winner}
     b.innerHTML=`<span class="hdate">${pretty(ds)}</span><span class="chips">${chips}</span><span class="hwin ${wc}">${wl} ${r.decided?`<span class="num" style="font-weight:500;font-size:.8rem">${r.p1}–${r.p2}</span>`:''}</span>`;
@@ -321,14 +325,14 @@ function renderCharts(finals,dates){
       r.addEventListener('pointerleave',()=>{tip.hidden=true;xh.setAttribute('visibility','hidden');hd.setAttribute('visibility','hidden')})});
   }
   // Averages per game
-  const avg={};for(const g of GAMES){avg[g.k]={};for(const p of P){const vs=dates.map(d=>scores[d][p]&&val(g,scores[d][p][g.k])).filter(v=>v!=null&&!isNaN(v));avg[g.k][p]=vs.length?{v:vs.reduce((a,b)=>a+b,0)/vs.length,n:vs.length}:null}}
+  const avg={};for(const g of GAMES){avg[g.k]={};for(const p of P){const vs=dates.filter(d=>on(g,d)).map(d=>scores[d][p]&&val(g,scores[d][p][g.k])).filter(v=>v!=null&&!isNaN(v));avg[g.k][p]=vs.length?{v:vs.reduce((a,b)=>a+b,0)/vs.length,n:vs.length}:null}}
   const any=GAMES.some(g=>avg[g.k].p1||avg[g.k].p2);
   if(!any){$('avgChart').innerHTML='<div class="empty">Averages appear after your first scores.</div>';return}
   $('avgChart').innerHTML=GAMES.map(g=>{const a=avg[g.k],max=g.type==='guess'?7:Math.max(1,(a.p1&&a.p1.v)||0,(a.p2&&a.p2.v)||0);
     let best='';if(a.p1&&a.p2&&a.p1.v!==a.p2.v){const b=(g.type==='guess'?a.p1.v<a.p2.v:a.p1.v>a.p2.v)?'p1':'p2';best=`<span class="best k${b==='p1'?1:2}">Edge: ${esc(nm(b))}</span>`}
     const bar=p=>{const o=a[p];const pct=o?Math.max(2,o.v/max*100):0;
       return`<div class="abar" title="${esc(nm(p))}: ${o?o.v.toFixed(1)+' over '+o.n+' day'+(o.n>1?'s':''):'no scores yet'}"><span class="who">${esc(nm(p))}</span><div class="track"><div class="fill ${p}" style="width:${pct}%"></div></div><span class="v">${o?(g.type==='guess'?o.v.toFixed(1):Math.round(o.v)):'–'}</span></div>`};
-    return`<div class="agame"><div class="ahead"><span class="gname ${g.k}">${g.name} <span class="note">${g.type==='guess'?'guesses, lower is better':'points, higher is better'}</span></span>${best}</div>${bar('p1')}${bar('p2')}</div>`}).join('');
+    return`<div class="agame"><div class="ahead"><span class="gname ${g.k}">${g.name} <span class="note">${g.type==='guess'?'guesses, lower is better':'points, higher is better'}${g.until?' · until '+pretty(g.until):g.from?' · since '+pretty(g.from):''}</span></span>${best}</div>${bar('p1')}${bar('p2')}</div>`}).join('');
 }
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 
@@ -336,10 +340,10 @@ function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','
 function buildRows(){
   const rows=$('rows');rows.innerHTML='';
   for(const g of GAMES){
-    const row=document.createElement('div');row.className='row';
+    const row=document.createElement('div');row.className='row';row.id='row_'+g.k;
     const mk=p=>{let el;
       if(g.type==='guess'){el=document.createElement('select');el.innerHTML='<option value="">–</option>'+[1,2,3,4,5,6].map(n=>`<option value="${n}">${n}/6</option>`).join('')+'<option value="X">X (missed)</option>'}
-      else{el=document.createElement('input');el.type='number';el.min='0';el.max='700';el.step='1';el.inputMode='numeric';el.placeholder='points'}
+      else{el=document.createElement('input');el.type='number';el.min='0';if(g.max)el.max=String(g.max);el.step='1';el.inputMode='numeric';el.placeholder='points'}
       el.className='field';el.id=g.k+'_'+p;el.setAttribute('aria-label',g.name+' score for '+nm(p));
       el.addEventListener('change',()=>commit(p,g.k,el.value));return el};
     const c1=document.createElement('div');c1.appendChild(mk('p1'));
@@ -352,7 +356,7 @@ function renderEntry(){
   $('dayTitle').textContent=sel===t?'Today':sel===shift(t,-1)?'Yesterday':pretty(sel,true);
   $('datePick').value=sel;$('datePick').max=t;$('nextDay').disabled=sel>=t;
   const s=scores[sel]||{},r=dayResult(sel);
-  for(const g of GAMES){for(const p of P){const el=$(g.k+'_'+p);const v=s[p]&&s[p][g.k];
+  for(const g of GAMES){$('row_'+g.k).hidden=!on(g,sel);for(const p of P){const el=$(g.k+'_'+p);const v=s[p]&&s[p][g.k];
       if(document.activeElement!==el)el.value=v==null?'':String(v);
       el.setAttribute('aria-label',g.name+' score for '+nm(p));
       el.classList.toggle('win1',r.games[g.k]==='p1'&&p==='p1');el.classList.toggle('win2',r.games[g.k]==='p2'&&p==='p2')}
@@ -362,7 +366,7 @@ function renderEntry(){
   if(!r.decided){ds.textContent=loaded?'No head-to-head results yet for this day.':'Loading…'}
   else if(r.winner==='tie'){ds.textContent=(r.final?'A draw, ':'Level so far, ')+r.p1+'–'+r.p2+'.'}
   else{ds.classList.add(r.winner);const lo=r.winner==='p1'?r.p2:r.p1,hi=r.winner==='p1'?r.p1:r.p2;
-    ds.textContent=nm(r.winner)+(r.final?' takes the day ':' leads ')+hi+'–'+lo+(r.final?'.':', '+(GAMES.length-r.decided)+' to go.')}
+    ds.textContent=nm(r.winner)+(r.final?' takes the day ':' leads ')+hi+'–'+lo+(r.final?'.':', '+(gamesOn(sel).length-r.decided)+' to go.')}
 }
 function setDay(ds){if(ds>todayStr())ds=todayStr();sel=ds;renderEntry()}
 $('prevDay').onclick=()=>setDay(shift(sel,-1));$('nextDay').onclick=()=>setDay(shift(sel,1));
@@ -370,7 +374,7 @@ $('datePick').addEventListener('change',e=>{if(e.target.value)setDay(e.target.va
 
 /* ---------- Saving ---------- */
 const queues={};
-function clean(g,v){if(v===''||v==null)return null;if(g.type==='guess')return v==='X'||String(v).toUpperCase()==='X'?'X':Math.min(6,Math.max(1,parseInt(v,10)))||null;const n=parseInt(v,10);return isNaN(n)?null:Math.max(0,n)}
+function clean(g,v){if(v===''||v==null)return null;if(g.type==='guess')return v==='X'||String(v).toUpperCase()==='X'?'X':Math.min(6,Math.max(1,parseInt(v,10)))||null;const n=parseInt(v,10);return isNaN(n)?null:Math.min(g.max||Infinity,Math.max(0,n))}
 function commit(p,k,raw,date){
   date=date||sel;const g=GAMES.find(x=>x.k===k);const v=clean(g,raw);
   scores[date]=scores[date]||{};scores[date][p]=Object.assign({},scores[date][p]||{},{[k]:v});
@@ -388,7 +392,7 @@ function parseShare(text){const out={};let m;
   if((m=text.match(/#?Tradle\s*#?\d*\s+([1-6X])\/6/i)))out.tradle=m[1].toUpperCase();
   if(/krillion/i.test(text)&&(m=text.match(/(\d{1,3})\s*(?:pts|points|p\b)/i)))out.krillion=m[1];
   return out}
-function doPaste(p){const found=parseShare($('pasteText').value);const ks=Object.keys(found);
+function doPaste(p){const found=parseShare($('pasteText').value);const ks=Object.keys(found).filter(k=>on(GAMES.find(g=>g.k===k),sel));
   if(!ks.length){$('pasteMsg').textContent='No result found. Paste the text the game copies when you tap Share.';return}
   ks.forEach(k=>commit(p,k,found[k]));
   $('pasteMsg').textContent='Added '+ks.map(k=>GAMES.find(g=>g.k===k).name+' '+fmt(GAMES.find(g=>g.k===k),found[k])).join(', ')+' for '+nm(p)+'.';$('pasteText').value=''}

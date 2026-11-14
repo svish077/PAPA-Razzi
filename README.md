@@ -1,6 +1,6 @@
 # Papa-Razzi Affair
 
-A private daily scoreboard for **Vish** and **Papz**, who play **Wordle**, **Tradle** and **Krillion** every day and want to know who won each game and each day.
+A private daily scoreboard for **Vish** and **Papz**, who play **Wordle**, **Perceptle** and **Krillion** every day (Perceptle replaced Tradle on 2026-10-26) and want to know who won each game and each day.
 
 - **Live site:** https://svish077.github.io/PAPA-Razzi/ (GitHub Pages; the path is case-sensitive)
 - **Repo:** https://github.com/svish077/PAPA-Razzi
@@ -41,7 +41,8 @@ This README doubles as a handoff note: it records what was built, how it works, 
 settings/players            { p1: { name: "Vish" }, p2: { name: "Papz" } }
 scores/{YYYY-MM-DD}_{p1|p2} { date: "2026-10-06", player: "p1",
                               wordle: 1-6 | "X" | null,
-                              tradle: 1-6 | "X" | null,
+                              tradle: 1-6 | "X" | null,      // days up to 2026-10-25
+                              perceptle: 0-1000 | null,      // days from 2026-10-26
                               krillion: <integer points> | null }
 ```
 
@@ -59,13 +60,17 @@ Defined in the `GAMES` array near the top of the script:
 ```js
 const GAMES=[
   {k:'wordle',  name:'Wordle',  type:'guess',  rule:'fewest guesses'},
-  {k:'tradle',  name:'Tradle',  type:'guess',  rule:'fewest guesses'},
-  {k:'krillion',name:'Krillion',type:'points', rule:'most points'}
+  {k:'tradle',   name:'Tradle',   type:'guess',  rule:'fewest guesses', until:'2026-10-25'},
+  {k:'perceptle',name:'Perceptle',type:'points', max:1000, rule:'most points (0–1000)', from:'2026-10-26'},
+  {k:'krillion', name:'Krillion', type:'points', max:700,  rule:'most points'}
 ];
 ```
 
+- **`from` / `until`** (inclusive `YYYY-MM-DD`) limit which days a game counts on. `gamesOn(ds)` returns the games active on a day; the day winner, "final" check, entry rows, history chips and averages all use it. To retire a game, set `until` rather than deleting it, so old days keep their results.
+- **`max`** caps a points game's input (Perceptle 1000, Krillion 700).
+
 - **`guess` games:** 1–6 or `X` (missed). Fewest guesses wins; `X` counts as 7, so any solve beats a miss and X vs X is a tie.
-- **`points` games:** any integer, highest wins. (Krillion: 7 prompts/day, up to 100 points each.)
+- **`points` games:** integer 0 to `max`, highest wins. Perceptle: 0–1000. (Krillion: 7 prompts/day, up to 100 points each.)
 - A game is only decided when **both** players have a score.
 - **Day winner:** whoever won more of the decided games that day; equal = tie.
 - A day is **final** when all games are decided, or when it's in the past and at least one game was decided. Only final days count toward "days won", streaks and the lead chart.
@@ -138,7 +143,7 @@ To test locally, serve the folder (e.g. `npx serve .` or VS Code Live Server) an
 
 ## Ideas backlog (not built)
 
-- Fix Krillion paste parsing once a real share string is captured.
+- Fix Krillion paste parsing once a real share string is captured. Perceptle has no paste parsing yet either (share format unknown).
 - "Paste the whole morning": one box that fills all games at once (Wordle/Tradle parsing already exists).
 - Weekly/monthly verdicts and trophies; streak badges.
 - Groups beyond two players (family/office league): would need player docs instead of fixed `p1`/`p2` keys and per-user logins.
