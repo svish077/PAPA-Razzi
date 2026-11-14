@@ -71,9 +71,9 @@ const GAMES=[
 
 - **`guess` games:** 1–6 or `X` (missed). Fewest guesses wins; `X` counts as 7, so any solve beats a miss and X vs X is a tie.
 - **`points` games:** integer 0 to `max`, highest wins. Perceptle: 0–1000. (Krillion: 7 prompts/day, up to 100 points each.)
-- A game is only decided when **both** players have a score.
+- **Walkover:** if only one player logged a game that day, that player wins the game. If neither did, nobody gets it. On today's date the entry card marks this "(so far)"; on past days "(walkover)".
 - **Day winner:** whoever won more of the decided games that day; equal = tie.
-- A day is **final** when all games are decided, or when it's in the past and at least one game was decided. Only final days count toward "days won", streaks and the lead chart.
+- A day is **final** when both players have logged every game, or when it's in the past and at least one game was decided. Only final days count toward "days won", streaks and the lead chart.
 
 **Adding a game** with an existing scoring type = add one line to `GAMES` (`k` must be a stable lowercase id). Everything else (entry row, history chips, tallies, averages chart, day winner) updates automatically. Other scoring styles (time-based, `/7` games, mistakes where 0 is best) need a new `type` handled in `val()`, `cmp()`, `clean()`, `fmt()`, the input builder in `buildRows()` and the averages chart.
 

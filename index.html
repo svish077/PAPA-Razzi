@@ -262,10 +262,15 @@ function nm(p){return players[p]&&players[p].name||(p==='p1'?'Player one':'Playe
 
 function val(g,v){if(v==null||v==='')return null;if(g.type==='guess')return v==='X'?7:Number(v);return Number(v)}
 function cmp(g,a,b){const va=val(g,a),vb=val(g,b);if(va==null||vb==null||isNaN(va)||isNaN(vb))return null;if(va===vb)return'tie';if(g.type==='guess')return va<vb?'p1':'p2';return va>vb?'p1':'p2'}
-function dayResult(ds){const s=scores[ds]||{};const res={p1:0,p2:0,tie:0,decided:0,games:{}};
-  const gs=gamesOn(ds);for(const g of gs){const r=cmp(g,s.p1&&s.p1[g.k],s.p2&&s.p2[g.k]);res.games[g.k]=r;if(r){res.decided++;res[r]++}}
+function has(g,v){const n=val(g,v);return n!=null&&!isNaN(n)}
+// Walkover rule: if only one player logged a game that day, that player wins the game.
+function dayResult(ds){const s=scores[ds]||{};const res={p1:0,p2:0,tie:0,decided:0,both:0,games:{},walk:{}};
+  const gs=gamesOn(ds);for(const g of gs){const a=s.p1&&s.p1[g.k],b=s.p2&&s.p2[g.k],ha=has(g,a),hb=has(g,b);let r=null;
+    if(ha&&hb){r=cmp(g,a,b);res.both++}else if(ha||hb){r=ha?'p1':'p2';res.walk[g.k]=true}
+    res.games[g.k]=r;if(r){res.decided++;res[r]++}}
   res.winner=res.decided?(res.p1>res.p2?'p1':res.p2>res.p1?'p2':'tie'):null;
-  res.final=res.decided===gs.length||(res.decided>0&&ds<todayStr());return res}
+  // Today only becomes final once both players have logged every game; past days are final once anything was played.
+  res.final=res.both===gs.length||(res.decided>0&&ds<todayStr());return res}
 function fmt(g,v){if(v==null||v==='')return'–';return g.type==='guess'?(v+'/6'):(v+' pts')}
 
 /* ---------- Scoreboard + history ---------- */
@@ -440,7 +445,7 @@ function renderEntry(){
       el.setAttribute('aria-label',g.name+' score for '+nm(p));
       el.classList.toggle('win1',r.games[g.k]==='p1'&&p==='p1');el.classList.toggle('win2',r.games[g.k]==='p2'&&p==='p2')}
     const w=r.games[g.k],v=$('v_'+g.k);v.className='verdict '+(w&&w!=='tie'?w:'');
-    v.textContent=!w?'—':w==='tie'?'Tie':w==='p1'?'◂ '+nm('p1'):nm('p2')+' ▸'}
+    v.textContent=!w?'—':w==='tie'?'Tie':(w==='p1'?'◂ '+nm('p1'):nm('p2')+' ▸')+(r.walk[g.k]?(sel<t?' (walkover)':' (so far)'):'')}
   const ds=$('daySum');ds.className='daysum';
   if(!r.decided){ds.textContent=loaded?'No head-to-head results yet for this day.':'Loading…'}
   else if(r.winner==='tie'){ds.textContent=(r.final?'A draw, ':'Level so far, ')+r.p1+'–'+r.p2+'.'}
